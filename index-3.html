@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Script & Switch — IT automation, templates, and infrastructure tooling</title>
+<meta name="description" content="Practical Apps Script automations, sysadmin tooling, and PXE deployment systems — built and shared by a working IT engineer.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0D1117;
+  --panel:#141A21;
+  --panel-2:#1B232C;
+  --line:#26303A;
+  --text:#E8E6E1;
+  --text-dim:#7A8B99;
+  --accent:#5FB89C;
+  --accent-dim:#3A7A66;
+  --amber:#D4A656;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Inter',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  line-height:1.6;
+  overflow-x:hidden;
+}
+a{color:inherit;text-decoration:none}
+
+/* ===== Background grid texture ===== */
+.grid-bg{
+  position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(95,184,156,0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(95,184,156,0.035) 1px, transparent 1px);
+  background-size:48px 48px;
+  mask-image:radial-gradient(ellipse 80% 50% at 50% 0%, black 40%, transparent 100%);
+}
+
+/* ===== Layout ===== */
+.wrap{position:relative;z-index:1;max-width:980px;margin:0 auto;padding:0 24px}
+
+/* ===== Nav ===== */
+nav{
+  position:sticky;top:0;z-index:50;
+  background:rgba(13,17,23,0.85);
+  backdrop-filter:blur(10px);
+  border-bottom:1px solid var(--line);
+}
+.nav-inner{
+  max-width:980px;margin:0 auto;padding:16px 24px;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.brand{font-family:var(--mono);font-weight:700;font-size:15px;letter-spacing:-0.02em;display:flex;align-items:center;gap:8px}
+.brand .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:blink 2.4s ease-in-out infinite}
+@keyframes blink{0%,40%{opacity:1}50%,90%{opacity:0.25}100%{opacity:1}}
+.nav-links{display:flex;gap:28px;font-size:13px;color:var(--text-dim)}
+.nav-links a:hover{color:var(--accent)}
+@media (max-width:640px){.nav-links{display:none}}
+
+/* ===== Hero ===== */
+.hero{padding:96px 0 72px;position:relative}
+.hero-eyebrow{
+  font-family:var(--mono);font-size:12px;color:var(--accent);
+  letter-spacing:0.08em;margin-bottom:20px;display:flex;align-items:center;gap:10px;
+}
+.hero-eyebrow::before{content:'';width:24px;height:1px;background:var(--accent)}
+.hero h1{
+  font-family:var(--mono);font-weight:800;
+  font-size:clamp(2.4rem,6vw,4.2rem);
+  line-height:1.05;letter-spacing:-0.02em;
+  margin-bottom:24px;
+}
+.hero h1 .soft{color:var(--text-dim);font-weight:500}
+.hero p.lede{
+  font-size:18px;color:var(--text-dim);max-width:560px;margin-bottom:36px;
+}
+.hero-actions{display:flex;gap:14px;flex-wrap:wrap}
+.btn{
+  font-family:var(--mono);font-size:13px;font-weight:500;
+  padding:13px 24px;border-radius:3px;
+  border:1px solid var(--line);
+  display:inline-flex;align-items:center;gap:8px;
+  transition:border-color .15s, background .15s, transform .1s;
+  cursor:pointer;background:transparent;
+}
+.btn-primary{background:var(--accent);color:#08130F;border-color:var(--accent)}
+.btn-primary:hover{background:#74CBAF;transform:translateY(-1px)}
+.btn-ghost{color:var(--text)}
+.btn-ghost:hover{border-color:var(--accent-dim);color:var(--accent)}
+
+/* ===== Section labels ===== */
+.section{padding:80px 0;border-top:1px solid var(--line)}
+.section-head{margin-bottom:48px}
+.section-tag{
+  font-family:var(--mono);font-size:12px;color:var(--text-dim);
+  letter-spacing:0.08em;margin-bottom:10px;
+}
+.section-title{font-family:var(--mono);font-weight:700;font-size:clamp(1.5rem,3vw,2rem);letter-spacing:-0.01em}
+
+/* ===== Patch panel grid (signature element) ===== */
+.panel{
+  background:var(--panel);
+  border:1px solid var(--line);
+  border-radius:6px;
+  padding:6px;
+}
+.port-grid{
+  display:grid;grid-template-columns:repeat(2,1fr);gap:6px;
+}
+@media (max-width:680px){.port-grid{grid-template-columns:1fr}}
+
+.port{
+  background:var(--panel-2);
+  border:1px solid var(--line);
+  border-radius:4px;
+  padding:22px 22px 20px;
+  position:relative;
+  transition:border-color .2s, background .2s;
+  cursor:default;
+}
+.port:hover{border-color:var(--accent-dim);background:#1E2832}
+.port-top{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:14px}
+.port-id{font-family:var(--mono);font-size:11px;color:var(--text-dim);letter-spacing:0.05em}
+.port-status{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:0.05em}
+.led{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 6px var(--accent);animation:blink 1.8s ease-in-out infinite}
+.led.amber{background:var(--amber);box-shadow:0 0 6px var(--amber)}
+.port h3{font-family:var(--mono);font-size:16px;font-weight:600;margin-bottom:10px;letter-spacing:-0.01em}
+.port p{font-size:13.5px;color:var(--text-dim);margin-bottom:16px;line-height:1.55}
+.port-tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{
+  font-family:var(--mono);font-size:10px;color:var(--text-dim);
+  border:1px solid var(--line);padding:3px 8px;border-radius:3px;
+  letter-spacing:0.02em;
+}
+
+/* ===== About / process ===== */
+.about-grid{display:grid;grid-template-columns:1fr 1fr;gap:48px}
+@media (max-width:680px){.about-grid{grid-template-columns:1fr}}
+.about-grid p{color:var(--text-dim);font-size:15px;margin-bottom:16px}
+.about-grid strong{color:var(--text);font-weight:600}
+.stat-row{display:flex;gap:36px;margin-top:8px;flex-wrap:wrap}
+.stat{}
+.stat-num{font-family:var(--mono);font-size:28px;font-weight:700;color:var(--accent)}
+.stat-label{font-size:12px;color:var(--text-dim);margin-top:2px}
+
+/* ===== Use templates ===== */
+.use-list{display:flex;flex-direction:column;gap:0}
+.use-item{
+  display:grid;grid-template-columns:32px 1fr auto;gap:18px;align-items:center;
+  padding:18px 0;border-bottom:1px solid var(--line);
+}
+.use-item:last-child{border-bottom:none}
+.use-num{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+.use-text{font-size:14.5px;color:var(--text)}
+.use-text span{color:var(--text-dim);font-size:13px;display:block;margin-top:2px}
+.use-arrow{color:var(--accent-dim);font-family:var(--mono)}
+
+/* ===== Contact / footer ===== */
+.cta-panel{
+  background:var(--panel);border:1px solid var(--line);border-radius:6px;
+  padding:48px;text-align:center;
+}
+.cta-panel h2{font-family:var(--mono);font-size:clamp(1.4rem,3vw,1.9rem);margin-bottom:14px}
+.cta-panel p{color:var(--text-dim);margin-bottom:28px;max-width:440px;margin-left:auto;margin-right:auto}
+
+footer{padding:40px 0 60px;border-top:1px solid var(--line)}
+.footer-row{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}
+.footer-row span{font-family:var(--mono);font-size:12px;color:var(--text-dim)}
+.footer-links{display:flex;gap:20px}
+.footer-links a{font-size:12px;color:var(--text-dim)}
+.footer-links a:hover{color:var(--accent)}
+
+/* ===== Reveal on scroll ===== */
+.reveal{opacity:0;transform:translateY(14px);transition:opacity .6s ease, transform .6s ease}
+.reveal.in{opacity:1;transform:translateY(0)}
+
+/* ===== Reduced motion ===== */
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important;transition:none !important}
+  html{scroll-behavior:auto}
+}
+
+/* ===== Focus states ===== */
+a:focus-visible,button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+</style>
+</head>
+<body>
+
+<div class="grid-bg"></div>
+
+<nav>
+  <div class="nav-inner">
+    <div class="brand"><span class="dot"></span>script&switch</div>
+    <div class="nav-links">
+      <a href="#toolkit">Toolkit</a>
+      <a href="#about">About</a>
+      <a href="#use">How to use</a>
+      <a href="#contact">Contact</a>
+    </div>
+  </div>
+</nav>
+
+<div class="wrap">
+
+  <section class="hero">
+    <div class="hero-eyebrow">IT AUTOMATION &amp; INFRASTRUCTURE TOOLING</div>
+    <h1>Small scripts.<br><span class="soft">Fewer manual tickets.</span></h1>
+    <p class="lede">
+      A working toolkit of Google Apps Script automations, sysadmin utilities, and zero-touch
+      deployment systems — built while solving real problems, shared so other small IT teams
+      don't have to start from zero.
+    </p>
+    <div class="hero-actions">
+      <a href="#toolkit" class="btn btn-primary">Browse the toolkit ↓</a>
+      <a href="#about" class="btn btn-ghost">Who built this</a>
+    </div>
+  </section>
+
+  <section class="section" id="toolkit">
+    <div class="section-head reveal">
+      <div class="section-tag">// PATCH PANEL</div>
+      <div class="section-title">Active ports</div>
+    </div>
+
+    <div class="panel reveal">
+      <div class="port-grid">
+
+        <div class="port">
+          <div class="port-top">
+            <span class="port-id">PORT 01</span>
+            <span class="port-status"><span class="led"></span>LIVE</span>
+          </div>
+          <h3>Drive ownership transfer + reversal</h3>
+          <p>Transfers ownership of a user's Google Drive files in bulk, with a logged undo path — the part most scripts skip.</p>
+          <div class="port-tags"><span class="tag">apps script</span><span class="tag">gws admin</span></div>
+        </div>
+
+        <div class="port">
+          <div class="port-top">
+            <span class="port-id">PORT 02</span>
+            <span class="port-status"><span class="led"></span>LIVE</span>
+          </div>
+          <h3>Software renewal reminders</h3>
+          <p>Watches license expiry dates in a sheet and fires email reminders on a schedule, before anything lapses silently.</p>
+          <div class="port-tags"><span class="tag">apps script</span><span class="tag">automation</span></div>
+        </div>
+
+        <div class="port">
+          <div class="port-top">
+            <span class="port-id">PORT 03</span>
+            <span class="port-status"><span class="led"></span>LIVE</span>
+          </div>
+          <h3>Exit / offboarding ID cleanup</h3>
+          <p>Flags accounts past their exit date and reminds the right people before deletion, instead of relying on memory.</p>
+          <div class="port-tags"><span class="tag">apps script</span><span class="tag">offboarding</span></div>
+        </div>
+
+        <div class="port">
+          <div class="port-top">
+            <span class="port-id">PORT 04</span>
+            <span class="port-status"><span class="led"></span>LIVE</span>
+          </div>
+          <h3>GWS group + member fetch</h3>
+          <p>Pulls every Google Workspace group with full membership detail into a sheet — no clicking through admin console group by group.</p>
+          <div class="port-tags"><span class="tag">apps script</span><span class="tag">gws admin</span></div>
+        </div>
+
+        <div class="port">
+          <div class="port-top">
+            <span class="port-id">PORT 05</span>
+            <span class="port-status"><span class="led amber"></span>FLAGSHIP</span>
+          </div>
+          <h3>PXE zero-touch OS deployment</h3>
+          <p>Boot from network, pick the image, walk away. Auto-installs OS, drivers, required apps, and provisions the user profile end to end.</p>
+          <div class="port-tags"><span class="tag">windows server</span><span class="tag">pxe</span><span class="tag">imaging</span></div>
+        </div>
+
+        <div class="port">
+          <div class="port-top">
+            <span class="port-id">PORT 06</span>
+            <span class="port-status"><span class="led amber"></span>SHELVED</span>
+          </div>
+          <h3>People-connect tracker</h3>
+          <p>A Sheets-backed wellbeing check-in tracker with attrition risk scoring and email reporting. Built end to end, paused for governance reasons — pattern's reusable elsewhere.</p>
+          <div class="port-tags"><span class="tag">apps script</span><span class="tag">people ops</span></div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="about">
+    <div class="section-head reveal">
+      <div class="section-tag">// WHO'S BEHIND THE PANEL</div>
+      <div class="section-title">About</div>
+    </div>
+    <div class="about-grid reveal">
+      <div>
+        <p>I'm a senior IT support engineer who got tired of doing the same five-minute task
+        for the fortieth time. Most of what's here started as <strong>a script written to fix
+        one annoying Tuesday</strong>, then cleaned up enough to hand to someone else.</p>
+        <p>Nothing on this page is theoretical. Every port in the panel above has run in a
+        real environment, against real data, with real consequences if it broke.</p>
+      </div>
+      <div>
+        <p>This isn't an agency and it isn't a product company. It's <strong>one engineer's
+        working notebook</strong>, published in case the same problem is eating someone else's
+        Tuesday too.</p>
+        <div class="stat-row">
+          <div class="stat"><div class="stat-num">6+</div><div class="stat-label">scripts in active use</div></div>
+          <div class="stat"><div class="stat-num">2</div><div class="stat-label">platforms — gws &amp; windows</div></div>
+          <div class="stat"><div class="stat-num">0</div><div class="stat-label">vendor lock-in</div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="use">
+    <div class="section-head reveal">
+      <div class="section-tag">// GETTING CONNECTED</div>
+      <div class="section-title">How to use these</div>
+    </div>
+    <div class="use-list reveal">
+      <div class="use-item">
+        <span class="use-num">01</span>
+        <div class="use-text">Pick the port that matches your problem<span>browse the panel above — each one names the exact pain it solves</span></div>
+        <span class="use-arrow">→</span>
+      </div>
+      <div class="use-item">
+        <span class="use-num">02</span>
+        <div class="use-text">Ask for the template<span>message via the contact section — most scripts ship as a copyable Sheet + bound Apps Script</span></div>
+        <span class="use-arrow">→</span>
+      </div>
+      <div class="use-item">
+        <span class="use-num">03</span>
+        <div class="use-text">Adapt it to your environment<span>column names and auth scopes will need adjusting — nothing here is plug-and-play magic</span></div>
+        <span class="use-arrow">→</span>
+      </div>
+      <div class="use-item">
+        <span class="use-num">04</span>
+        <div class="use-text">Keep what breaks, fix what doesn't fit<span>these are starting points built for one environment, not finished products</span></div>
+        <span class="use-arrow">→</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="contact">
+    <div class="cta-panel reveal">
+      <h2>Something here worth borrowing?</h2>
+      <p>Templates, walkthroughs, and the occasional rant about admin consoles —
+      reach out and I'll point you to the right port.</p>
+      <div class="hero-actions" style="justify-content:center">
+        <a href="mailto:hello@scriptandswitch.com" class="btn btn-primary">Email →</a>
+        <a href="https://github.com/" class="btn btn-ghost">GitHub ↗</a>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <div class="footer-row">
+      <span>script&switch © 2026</span>
+      <div class="footer-links">
+        <a href="#toolkit">Toolkit</a>
+        <a href="#about">About</a>
+        <a href="#contact">Contact</a>
+      </div>
+    </div>
+  </footer>
+
+</div>
+
+<script>
+var els = document.querySelectorAll('.reveal');
+var io = new IntersectionObserver(function(entries){
+  entries.forEach(function(e){
+    if(e.isIntersecting){ e.target.classList.add('in'); io.unobserve(e.target); }
+  });
+},{threshold:0.12});
+els.forEach(function(el){ io.observe(el); });
+</script>
+
+</body>
+</html>
