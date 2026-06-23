@@ -7,6 +7,8 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet" />
+
 <style>
 :root{
   --bg:#0D1117;
@@ -25,10 +27,10 @@ body{
   background:var(--bg);
   color:var(--text);
   font-family:var(--sans);
-  line-height:1.7; /* Increased for better reading */
-  padding: 64px 24px; /* More breathing room */
+  line-height:1.7;
+  padding: 64px 24px; 
 }
-/* Narrower width is optimal for reading documentation */
+
 .wrap{max-width:720px;margin:0 auto;}
 
 .back-link {
@@ -46,7 +48,7 @@ body{
 
 h1 {
   font-family:var(--mono);font-weight:800;
-  font-size:clamp(2rem, 5vw, 3rem); /* Matches your hero section scaling */
+  font-size:clamp(2rem, 5vw, 3rem); 
   letter-spacing:-0.02em; margin-bottom: 24px; line-height: 1.1;
 }
 
@@ -84,25 +86,46 @@ h2 {
 .code-window {
   margin-bottom: 64px;
   box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  border-radius: 8px;
 }
 .code-header {
-  display: flex; justify-content: space-between; align-items: center;
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
   background: #11161D; border: 1px solid var(--line); border-bottom: none;
   padding: 12px 20px; border-radius: 8px 8px 0 0;
   font-family: var(--mono); font-size: 12px; color: var(--text-dim);
 }
-.code-header .dots { display: flex; gap: 6px; }
+.code-header .dots { display: flex; gap: 6px; justify-content: flex-start; }
 .code-header .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); }
 .code-header .dot:nth-child(1) { background: #FF5F56; }
 .code-header .dot:nth-child(2) { background: #FFBD2E; }
 .code-header .dot:nth-child(3) { background: #27C93F; }
 
-pre {
-  background: #090C10; border: 1px solid var(--line); border-radius: 0 0 8px 8px;
-  padding: 32px 24px; overflow-x: auto; font-family: var(--mono); font-size: 13.5px;
-  color: #E8E6E1; line-height: 1.5; margin: 0;
+.code-header .title { text-align: center; }
+
+.code-header .actions { display: flex; justify-content: flex-end; }
+.copy-btn {
+  background: transparent; border: 1px solid var(--line); color: var(--text-dim);
+  font-family: var(--mono); font-size: 11px; padding: 4px 10px; border-radius: 4px;
+  cursor: pointer; transition: all 0.2s ease;
 }
-.comment { color: #7A8B99; }
+.copy-btn:hover { color: var(--text); border-color: var(--text-dim); }
+.copy-btn.copied { color: var(--accent); border-color: var(--accent); background: rgba(95,184,156,0.1); }
+
+/* Override Prism default backgrounds to blend with your panel */
+pre[class*="language-"] {
+  background: #090C10 !important;
+  margin: 0 !important;
+  border: 1px solid var(--line) !important;
+  border-top: none !important;
+  border-radius: 0 0 8px 8px !important;
+  padding: 32px 24px !important;
+  font-family: var(--mono) !important;
+  font-size: 13.5px !important;
+  line-height: 1.6 !important;
+}
+code[class*="language-"], pre[class*="language-"] {
+  text-shadow: none !important; /* Removes default shadow for a cleaner, flatter look */
+}
 </style>
 </head>
 <body>
@@ -136,13 +159,16 @@ pre {
   <div class="code-window">
     <div class="code-header">
       <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-      <span>Code.gs</span>
+      <div class="title">Code.gs</div>
+      <div class="actions">
+        <button class="copy-btn" onclick="copyScriptCode(this)">Copy code</button>
+      </div>
     </div>
-<pre><code>function transferFolderOwnership() {
-<span class="comment">  // --- CONFIGURATION ---
+    <pre><code id="scriptCode" class="language-javascript">function transferFolderOwnership() {
+  // --- CONFIGURATION ---
   var folderId = 'PASTE_YOUR_FOLDER_ID_HERE'; 
   var newOwnerEmail = 'correct.owner@yourdomain.com'; 
-  // ---------------------</span>
+  // ---------------------
 
   try {
     var folder = DriveApp.getFolderById(folderId);
@@ -170,10 +196,10 @@ function transferOwnershipRecursively(folder, newOwnerEmail) {
 }
 
 function removeFolderAccess() {
-<span class="comment">  // --- CONFIGURATION ---
+  // --- CONFIGURATION ---
   var folderId = 'PASTE_YOUR_FOLDER_ID_HERE'; 
   var userToRemove = 'wrong.person@yourdomain.com'; 
-  // ---------------------</span>
+  // ---------------------
 
   try {
     var folder = DriveApp.getFolderById(folderId);
@@ -211,6 +237,32 @@ function removeAccessFromItem(item, userEmail) {
   </div>
 
 </div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+
+<script>
+function copyScriptCode(btn) {
+  // Get the code text, removing any HTML tags used for syntax highlighting
+  const codeText = document.getElementById('scriptCode').innerText;
+  
+  // Write to clipboard
+  navigator.clipboard.writeText(codeText).then(() => {
+    // Visual feedback
+    const originalText = btn.innerText;
+    btn.innerText = 'Copied!';
+    btn.classList.add('copied');
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      btn.innerText = originalText;
+      btn.classList.remove('copied');
+    }, 2000);
+  }).catch(err => {
+    console.error('Failed to copy: ', err);
+    btn.innerText = 'Error';
+  });
+}
+</script>
 
 </body>
 </html>
