@@ -1,0 +1,167 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drive Ownership Transfer — Script & Switch</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0D1117;
+  --panel:#141A21;
+  --line:#26303A;
+  --text:#E8E6E1;
+  --text-dim:#7A8B99;
+  --accent:#5FB89C;
+  --amber:#D4A656;
+  --mono:'JetBrains Mono',monospace;
+  --sans:'Inter',sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--bg);
+  color:var(--text);
+  font-family:var(--sans);
+  line-height:1.6;
+  padding: 40px 24px;
+}
+.wrap{max-width:800px;margin:0 auto;}
+.back-link {
+  font-family:var(--mono);font-size:13px;color:var(--accent);
+  text-decoration:none;display:inline-flex;align-items:center;gap:8px;
+  margin-bottom: 32px; transition: opacity 0.2s;
+}
+.back-link:hover { opacity: 0.8; }
+.header-tag {
+  font-family:var(--mono);font-size:12px;color:var(--text-dim);
+  letter-spacing:0.08em;margin-bottom:10px;
+}
+h1 {
+  font-family:var(--mono);font-weight:700;font-size:2rem;
+  letter-spacing:-0.01em; margin-bottom: 16px;
+}
+p.lede { color:var(--text-dim); margin-bottom: 32px; font-size: 1.1rem; }
+h2 {
+  font-family:var(--mono);font-weight:600;font-size:1.2rem;
+  margin: 40px 0 16px; color: var(--accent);
+}
+.instructions {
+  background:var(--panel); border:1px solid var(--line);
+  border-radius:6px; padding:24px; margin-bottom: 32px;
+}
+.instructions ol { padding-left: 20px; color: var(--text-dim); }
+.instructions li { margin-bottom: 12px; }
+.instructions strong { color: var(--text); }
+pre {
+  background: #090C10; border: 1px solid var(--line); border-radius: 6px;
+  padding: 16px; overflow-x: auto; font-family: var(--mono); font-size: 13px;
+  color: #C9D1D9; margin-bottom: 40px;
+}
+.warning {
+  border-left: 3px solid var(--amber); padding-left: 16px;
+  color: var(--amber); font-size: 14px; margin-bottom: 24px;
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <a href="index.html" class="back-link">← Back to Patch Panel</a>
+  
+  <div class="header-tag">// PORT 01: TEMPLATE</div>
+  <h1>Drive Ownership Transfer & Scrub</h1>
+  <p class="lede">Google Drive doesn't automatically transfer the contents of a folder when you transfer the parent. This script recursively transfers ownership of all nested files, and explicitly removes the previous owner's access.</p>
+
+  <div class="warning">
+    <strong>Note:</strong> This script only works for accounts within the same Google Workspace domain. It must be run from the account that currently owns the files (or a Super Admin).
+  </div>
+
+  <div class="instructions">
+    <h2>// How to Deploy</h2>
+    <ol>
+      <li>Go to <strong><a href="https://script.google.com/" target="_blank" style="color:var(--accent);">script.google.com</a></strong> and click <strong>New Project</strong>.</li>
+      <li>Copy the code below and paste it into the editor, replacing any existing code.</li>
+      <li>Update the <code>folderId</code> and target email addresses at the top of the script.</li>
+      <li>Click the <strong>Save</strong> icon.</li>
+      <li>Select <code>transferFolderOwnership</code> from the dropdown menu at the top and click <strong>Run</strong>. (You will be asked to authorize the script).</li>
+      <li>Once the transfer is complete, select <code>removeFolderAccess</code> and run it to scrub the old user's permissions.</li>
+    </ol>
+  </div>
+
+  <h2>// The Code (Code.gs)</h2>
+<pre><code>function transferFolderOwnership() {
+  // --- CONFIGURATION ---
+  var folderId = 'PASTE_YOUR_FOLDER_ID_HERE'; 
+  var newOwnerEmail = 'correct.owner@yourdomain.com'; 
+  // ---------------------
+
+  try {
+    var folder = DriveApp.getFolderById(folderId);
+    transferOwnershipRecursively(folder, newOwnerEmail);
+    folder.setOwner(newOwnerEmail);
+    Logger.log('Successfully transferred main folder.');
+  } catch (e) {
+    Logger.log('Error accessing folder: ' + e.message);
+  }
+}
+
+function transferOwnershipRecursively(folder, newOwnerEmail) {
+  var files = folder.getFiles();
+  while (files.hasNext()) {
+    try { files.next().setOwner(newOwnerEmail); } catch (e) {}
+  }
+  var subfolders = folder.getFolders();
+  while (subfolders.hasNext()) {
+    var subfolder = subfolders.next();
+    try {
+      transferOwnershipRecursively(subfolder, newOwnerEmail);
+      subfolder.setOwner(newOwnerEmail);
+    } catch (e) {}
+  }
+}
+
+function removeFolderAccess() {
+  // --- CONFIGURATION ---
+  var folderId = 'PASTE_YOUR_FOLDER_ID_HERE'; 
+  var userToRemove = 'wrong.person@yourdomain.com'; 
+  // ---------------------
+
+  try {
+    var folder = DriveApp.getFolderById(folderId);
+    removeAccessFromItem(folder, userToRemove);
+    removeAccessRecursively(folder, userToRemove);
+    Logger.log('Successfully scrubbed access.');
+  } catch (e) {
+    Logger.log('Error accessing folder: ' + e.message);
+  }
+}
+
+function removeAccessRecursively(folder, userEmail) {
+  var files = folder.getFiles();
+  while (files.hasNext()) { removeAccessFromItem(files.next(), userEmail); }
+  var subfolders = folder.getFolders();
+  while (subfolders.hasNext()) {
+    var subfolder = subfolders.next();
+    removeAccessFromItem(subfolder, userEmail);
+    removeAccessRecursively(subfolder, userEmail);
+  }
+}
+
+function removeAccessFromItem(item, userEmail) {
+  try {
+    var editors = item.getEditors();
+    for (var i = 0; i < editors.length; i++) {
+      if (editors[i].getEmail() === userEmail) item.removeEditor(userEmail);
+    }
+    var viewers = item.getViewers();
+    for (var j = 0; j < viewers.length; j++) {
+      if (viewers[j].getEmail() === userEmail) item.removeViewer(userEmail);
+    }
+  } catch (e) {}
+}</code></pre>
+
+</div>
+</body>
+</html>
