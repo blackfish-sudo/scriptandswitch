@@ -124,7 +124,7 @@ pre[class*="language-"] {
   line-height: 1.6 !important;
 }
 code[class*="language-"], pre[class*="language-"] {
-  text-shadow: none !important; /* Removes default shadow for a cleaner, flatter look */
+  text-shadow: none !important; 
 }
 </style>
 </head>
@@ -135,104 +135,130 @@ code[class*="language-"], pre[class*="language-"] {
   
   <div class="header-tag">TEMPLATE READY</div>
   <h1>Drive Ownership Transfer & Scrub</h1>
-  <p class="lede">Google Drive doesn't automatically transfer the contents of a folder when you transfer the parent. This script recursively transfers ownership of all nested files, and explicitly removes the previous owner's access.</p>
+  <p class="lede">Google Drive doesn't automatically transfer the contents of a folder when you transfer the parent. These two scripts handle the transfer and the cleanup without needing messy recursive helper functions.</p>
 
   <div class="warning">
     <strong>REQUIREMENTS</strong>
-    This script only works for accounts within the same Google Workspace domain. It must be run from the account that currently owns the files (or executed by a Super Admin using a service account).
+    This script only works for accounts within the same Google Workspace domain. The scripts must be run by two separate users to fully hand off the data.
   </div>
 
   <div class="instructions">
     <h2>How to deploy this script</h2>
     <ol>
-      <li>Go to <strong>script.google.com</strong> and click <strong>New Project</strong>.</li>
-      <li>Copy the code block below and paste it into the editor, deleting any default code.</li>
-      <li>Update the <code>folderId</code> and target email addresses in the configuration sections.</li>
-      <li>Click the <strong>Save</strong> icon (floppy disk) at the top.</li>
-      <li>Select <code>transferFolderOwnership</code> from the execution dropdown menu and click <strong>Run</strong>. (You will be prompted to authorize the script).</li>
-      <li>Once the transfer is completely finished, select <code>removeFolderAccess</code> and run it to completely scrub the old user's permissions.</li>
+      <li><strong>The "Wrong" Person</strong> goes to <strong>script.google.com</strong>, pastes Script 1 into the editor, updates the variables, and clicks <strong>Run</strong>. This pushes ownership to the correct person.</li>
+      <li><strong>The "Correct" Person</strong> then goes to <strong>script.google.com</strong>, pastes Script 2 into the editor, updates the variables, and clicks <strong>Run</strong>. This permanently revokes the wrong person's remaining Editor/Viewer access.</li>
     </ol>
   </div>
 
-  <h2>Source Code (Code.gs)</h2>
+  <h2>Script 1: Push Ownership</h2>
   
   <div class="code-window">
     <div class="code-header">
       <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
       <div class="title">Code.gs</div>
       <div class="actions">
-        <button class="copy-btn" onclick="copyScriptCode(this)">Copy code</button>
+        <button class="copy-btn" onclick="copyScriptCode('script1', this)">Copy code</button>
       </div>
     </div>
-    <pre><code id="scriptCode" class="language-javascript">function transferFolderOwnership() {
+<pre><code id="script1" class="language-javascript">function executeOwnershipTransfer() {
   // --- CONFIGURATION ---
   var folderId = 'PASTE_YOUR_FOLDER_ID_HERE'; 
-  var newOwnerEmail = 'correct.owner@yourdomain.com'; 
+  var correctOwnerEmail = 'correct.owner@yourdomain.com'; 
   // ---------------------
 
   try {
-    var folder = DriveApp.getFolderById(folderId);
-    transferOwnershipRecursively(folder, newOwnerEmail);
-    folder.setOwner(newOwnerEmail);
-    Logger.log('Successfully transferred main folder.');
+    var mainFolder = DriveApp.getFolderById(folderId);
+    var foldersToProcess = [mainFolder]; 
+
+    while (foldersToProcess.length > 0) {
+      var currentFolder = foldersToProcess.shift();
+      
+      // 1. Transfer files in current folder
+      var files = currentFolder.getFiles();
+      while (files.hasNext()) {
+        try { files.next().setOwner(correctOwnerEmail); } catch (e) {}
+      }
+      
+      // 2. Queue up subfolders and transfer their ownership
+      var subfolders = currentFolder.getFolders();
+      while (subfolders.hasNext()) {
+        var subfolder = subfolders.next();
+        foldersToProcess.push(subfolder);
+        try { subfolder.setOwner(correctOwnerEmail); } catch (e) {}
+      }
+    }
+    
+    // 3. Transfer the main parent folder last
+    try { mainFolder.setOwner(correctOwnerEmail); } catch (e) {}
+    
+    Logger.log('Successfully transferred all ownership to: ' + correctOwnerEmail);
   } catch (e) {
-    Logger.log('Error accessing folder: ' + e.message);
+    Logger.log('Critical Error: ' + e.message);
   }
-}
+}</code></pre>
+  </div>
 
-function transferOwnershipRecursively(folder, newOwnerEmail) {
-  var files = folder.getFiles();
-  while (files.hasNext()) {
-    try { files.next().setOwner(newOwnerEmail); } catch (e) {}
-  }
-  var subfolders = folder.getFolders();
-  while (subfolders.hasNext()) {
-    var subfolder = subfolders.next();
-    try {
-      transferOwnershipRecursively(subfolder, newOwnerEmail);
-      subfolder.setOwner(newOwnerEmail);
-    } catch (e) {}
-  }
-}
+  <h2>Script 2: Scrub Previous Access</h2>
 
-function removeFolderAccess() {
+  <div class="code-window">
+    <div class="code-header">
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div class="title">Code.gs</div>
+      <div class="actions">
+        <button class="copy-btn" onclick="copyScriptCode('script2', this)">Copy code</button>
+      </div>
+    </div>
+<pre><code id="script2" class="language-javascript">function executeAccessScrub() {
   // --- CONFIGURATION ---
   var folderId = 'PASTE_YOUR_FOLDER_ID_HERE'; 
-  var userToRemove = 'wrong.person@yourdomain.com'; 
+  var wrongPersonEmail = 'wrong.person@yourdomain.com'; 
   // ---------------------
 
   try {
-    var folder = DriveApp.getFolderById(folderId);
-    removeAccessFromItem(folder, userToRemove);
-    removeAccessRecursively(folder, userToRemove);
-    Logger.log('Successfully scrubbed access.');
+    var mainFolder = DriveApp.getFolderById(folderId);
+    var foldersToProcess = [mainFolder];
+
+    while (foldersToProcess.length > 0) {
+      var currentFolder = foldersToProcess.shift();
+      
+      // 1. Scrub access from the folder itself
+      try {
+        var folderEditors = currentFolder.getEditors();
+        for (var i = 0; i < folderEditors.length; i++) {
+          if (folderEditors[i].getEmail() === wrongPersonEmail) currentFolder.removeEditor(wrongPersonEmail);
+        }
+        var folderViewers = currentFolder.getViewers();
+        for (var j = 0; j < folderViewers.length; j++) {
+          if (folderViewers[j].getEmail() === wrongPersonEmail) currentFolder.removeViewer(wrongPersonEmail);
+        }
+      } catch (e) {}
+
+      // 2. Scrub access from files inside this folder
+      var files = currentFolder.getFiles();
+      while (files.hasNext()) {
+        var file = files.next();
+        try {
+          var fileEditors = file.getEditors();
+          for (var x = 0; x < fileEditors.length; x++) {
+            if (fileEditors[x].getEmail() === wrongPersonEmail) file.removeEditor(wrongPersonEmail);
+          }
+          var fileViewers = file.getViewers();
+          for (var y = 0; y < fileViewers.length; y++) {
+            if (fileViewers[y].getEmail() === wrongPersonEmail) file.removeViewer(wrongPersonEmail);
+          }
+        } catch (e) {}
+      }
+      
+      // 3. Queue up subfolders
+      var subfolders = currentFolder.getFolders();
+      while (subfolders.hasNext()) {
+        foldersToProcess.push(subfolders.next());
+      }
+    }
+    Logger.log('Successfully scrubbed all access for: ' + wrongPersonEmail);
   } catch (e) {
-    Logger.log('Error accessing folder: ' + e.message);
+    Logger.log('Critical Error: ' + e.message);
   }
-}
-
-function removeAccessRecursively(folder, userEmail) {
-  var files = folder.getFiles();
-  while (files.hasNext()) { removeAccessFromItem(files.next(), userEmail); }
-  var subfolders = folder.getFolders();
-  while (subfolders.hasNext()) {
-    var subfolder = subfolders.next();
-    removeAccessFromItem(subfolder, userEmail);
-    removeAccessRecursively(subfolder, userEmail);
-  }
-}
-
-function removeAccessFromItem(item, userEmail) {
-  try {
-    var editors = item.getEditors();
-    for (var i = 0; i < editors.length; i++) {
-      if (editors[i].getEmail() === userEmail) item.removeEditor(userEmail);
-    }
-    var viewers = item.getViewers();
-    for (var j = 0; j < viewers.length; j++) {
-      if (viewers[j].getEmail() === userEmail) item.removeViewer(userEmail);
-    }
-  } catch (e) {}
 }</code></pre>
   </div>
 
@@ -241,9 +267,9 @@ function removeAccessFromItem(item, userEmail) {
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
 
 <script>
-function copyScriptCode(btn) {
+function copyScriptCode(elementId, btn) {
   // Get the code text, removing any HTML tags used for syntax highlighting
-  const codeText = document.getElementById('scriptCode').innerText;
+  const codeText = document.getElementById(elementId).innerText;
   
   // Write to clipboard
   navigator.clipboard.writeText(codeText).then(() => {
